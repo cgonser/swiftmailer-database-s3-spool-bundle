@@ -1,0 +1,3 @@
+cgonser_swift_mailer_database_s3_spool_homepage:
+    path:     /
+    defaults: { _controller: CgonserSwiftMailerDatabaseS3SpoolBundle:Default:index }

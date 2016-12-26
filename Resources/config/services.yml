@@ -1,0 +1,12 @@
+services:
+    cgonser.swift_mailer.spool.db_s3:
+        class: Cgonser\SwiftMailerDatabaseS3SpoolBundle\Spool\DatabaseS3Spool
+        arguments:
+            - "%cgonser_swift_mailer_database_s3_spool.s3_bucket%"
+            - "%cgonser_swift_mailer_database_s3_spool.entity_class%"
+            - "@aws.s3"
+            - "@doctrine"
+    swiftmailer.spool.db_s3:
+        alias: cgonser.swift_mailer.spool.db_s3
+    swiftmailer.mailer.default.spool.db_s3:
+        alias: cgonser.swift_mailer.spool.db_s3
