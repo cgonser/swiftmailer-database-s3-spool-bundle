@@ -41,6 +41,9 @@ class AppKernel extends Kernel
 Please remember to first configure the AWS SDK accordingly. Once it's  properly configured, you can place this bundle configuration in `app/config/config.yml` file.
 
 ```yaml
+
+
+
 cgonser_swift_mailer_database_s3_spool:
     s3:
         bucket: "<TARGET BUCKET>"

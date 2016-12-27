@@ -16,7 +16,7 @@
     },
     "autoload" : {
         "psr-4" : {
-            "CGonser\\SwiftMailerDatabaseS3SpoolBundle\\" : ""
+            "Cgonser\\SwiftMailerDatabaseS3SpoolBundle\\" : ""
         }
     }
 }
