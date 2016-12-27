@@ -19,10 +19,5 @@
             "CGonser\\SwiftMailerDatabaseS3SpoolBundle" : ""
         }
     },
-    "target-dir" : "cgonser/swiftmailer-database-s3-spool",
-    "extra" : {
-	    "branch-alias" : {
-            "dev-master" : "some_version-dev"
-        }
-    }
+    "target-dir" : "cgonser/swiftmailer-database-s3-spool"
 }
