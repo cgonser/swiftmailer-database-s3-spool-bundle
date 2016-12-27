@@ -5,6 +5,7 @@ namespace Cgonser\SwiftMailerDatabaseS3SpoolBundle\Spool;
 use Swift_Mime_Message;
 use Swift_Transport;
 use Swift_ConfigurableSpool;
+use Swift_IoException;
 use Aws\S3\S3Client;
 use Doctrine\Bundle\DoctrineBundle\Registry;
 use Doctrine\ORM\EntityManager;
@@ -41,17 +42,24 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      */
     protected $transport;
 
+    /**
+     * Interval between each retry
+     *
+     * @var integer
+     */
+    protected $retryInterval = 0;
+
 	/**
-	 * @param string    $s3Bucket
+	 * @param string    $s3Config
 	 * @param string    $entityClass
-	 * @param S3Client  $s3Client
 	 * @param Registry  $doctrine
 	 */
 
-    public function __construct($s3Bucket, $entityClass, S3Client $s3Client, Registry $doctrine)
+    public function __construct($s3Config, $entityClass, Registry $doctrine)
     {
-        $this->s3Bucket = $s3Bucket;
-        $this->s3Client = $s3Client;
+        $this->s3Bucket = $s3Config['bucket'];
+        unset ($s3Config['bucket']);
+        $this->s3Client = new S3Client($s3Config);
         
         $this->doctrine = $doctrine;
         $this->entityClass = $entityClass;
@@ -161,8 +169,8 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             $mailQueueObject->setStartedAt(new \DateTime());
             $this->entityManager->persist($mailQueueObject);
         }
-
         $this->entityManager->flush();
+
         foreach ($queuedMessages as $mailQueueObject) {
             $count += $this->sendMessage($mailQueueObject);
 
@@ -170,7 +178,6 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 break;
             }
         }
-
         $this->entityManager->flush();
 
         return $count;
@@ -190,10 +197,12 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
 
             $count = $this->transport->send($message, $this->failedRecipients);
             $mailQueueObject->setSentAt(new \DateTime());
-            $this->entityManager->persist($mailQueueObject);
 
+            $this->entityManager->persist($mailQueueObject);
             $this->s3ArquiveMessage($mailQueueObject->getId());
-        } catch (Exception $e) {
+        } catch (Swift_IoException $e) {
+            $mailQueueObject->setErrorMessage($e->getMessage());
+            $this->entityManager->persist($mailQueueObject);
             $count = 0;
         }
 
@@ -225,7 +234,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                     ->setParameter('now', new \DateTime);
                 break;
             case 'retries':
-                $errorThreshold = new \DateTime('15 minutes ago');
+                $errorThreshold = new \DateTime($this->retryInterval.' minutes ago');
                 $qb->where('m.sentAt IS NULL')
                     ->andWhere('m.startedAt IS NOT NULL')
                     ->andWhere('m.startedAt <= :errorThreshold')
@@ -281,6 +290,9 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             ]);
 
             return unserialize($result['Body']);
+        } catch (\Aws\S3\Exception\S3Exception $e) {
+            throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
+                $messageId, $this->s3Bucket));            
         } catch (Exception $e) {
             throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));

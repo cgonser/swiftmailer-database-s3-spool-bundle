@@ -2,7 +2,7 @@
 
 A Symfony bundle that enables Swift Mailer to spool messages from a database and store message files on an Amazon S3 bucket
 
-It requires the [AWS PHP SDK](https://github.com/aws/aws-sdk-php) and the [AWS Service Provider Bundle](https://github.com/aws/aws-sdk-php-symfony) and relies on Doctrine for data persistency.
+It requires the [AWS PHP SDK](https://github.com/aws/aws-sdk-php) and relies on Doctrine for data persistency.
 
 ## Installation
 
@@ -23,7 +23,6 @@ in the `app/AppKernel.php` file of your project:
 <?php
 // app/AppKernel.php
 
-// ...
 class AppKernel extends Kernel
 {
     public function registerBundles()
@@ -33,19 +32,29 @@ class AppKernel extends Kernel
 
             new Cgonser\SwiftMailerDatabaseS3SpoolBundle\CgonserSwiftMailerDatabaseS3SpoolBundle(),
         ];
-
-        // ...
     }
-
-    // ...
 }
 ```
 
 ## Configuration
 
-Please remember to first configure the AWS SDK and AWS Service Provider accordingly. Once they are properly configured, you can place this bundle configuration in `app/config/config.yml` file.
+Please remember to first configure the AWS SDK accordingly. Once it's  properly configured, you can place this bundle configuration in `app/config/config.yml` file.
 
 ```yaml
 cgonser_swift_mailer_database_s3_spool:
-    s3_bucket: "<< TARGET BUCKET >>"
+    s3:
+        bucket: "<TARGET BUCKET>"
+        region: "<S3 REGION>"
 ```
+
+You can also provide specific AWS credentials for this bucket, if you want to:
+
+```yaml
+cgonser_swift_mailer_database_s3_spool:
+    s3:
+        bucket: "<TARGET BUCKET>"
+        region: "<BUCKET REGION>"
+        key: "<YOUR AWS KEY>"
+        secret: "<YOUR AWS SECRET"
+```
+

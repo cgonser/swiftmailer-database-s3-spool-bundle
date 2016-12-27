@@ -23,8 +23,8 @@ class CgonserSwiftMailerDatabaseS3SpoolExtension extends Extension
     {
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
-
-        $container->setParameter("cgonser_swift_mailer_database_s3_spool.s3_bucket", $config["s3_bucket"]);
+        
+        $container->setParameter("cgonser_swift_mailer_database_s3_spool.s3", $config["s3"]);
         $container->setParameter("cgonser_swift_mailer_database_s3_spool.entity_class", $config["entity_class"]);
 
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
