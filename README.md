@@ -55,6 +55,6 @@ cgonser_swift_mailer_database_s3_spool:
         bucket: "<TARGET BUCKET>"
         region: "<BUCKET REGION>"
         key: "<YOUR AWS KEY>"
-        secret: "<YOUR AWS SECRET"
+        secret: "<YOUR AWS SECRET>"
 ```
 
