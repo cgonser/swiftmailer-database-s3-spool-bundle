@@ -27,6 +27,7 @@ class Configuration implements ConfigurationInterface
                     ->cannotBeEmpty()
                     ->end()
                 ->arrayNode("s3")
+                    ->isRequired()
                     ->children()
                         ->scalarNode("version")
                             ->defaultValue("2006-03-01")
