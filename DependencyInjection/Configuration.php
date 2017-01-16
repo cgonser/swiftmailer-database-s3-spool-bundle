@@ -38,6 +38,8 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode("region")
                             ->isRequired()
                             ->end()
+                        ->scalarNode("folder")
+                            ->end()
                         ->scalarNode("key")
                             ->end()
                         ->scalarNode("secret")

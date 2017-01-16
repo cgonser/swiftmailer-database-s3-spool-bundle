@@ -45,6 +45,7 @@ cgonser_swift_mailer_database_s3_spool:
     s3:
         bucket: "<TARGET BUCKET>"
         region: "<S3 REGION>"
+        folder: "<TARGET FOLDER>" (optional)
 ```
 
 Still in `app/config/config.yml`, enable the services and change the swift mailer spool configuration:

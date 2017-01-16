@@ -12,30 +12,35 @@ use Doctrine\ORM\EntityManager;
 
 class DatabaseS3Spool extends Swift_ConfigurableSpool
 {
-	/**
-	 * @var S3Client
-	 */
-	protected $s3Client;
+    /**
+     * @var S3Client
+     */
+    protected $s3Client;
 
-	/**
-	 * @var string
-	 */
-	protected $s3Bucket;
+    /**
+     * @var string
+     */
+    protected $s3Bucket;
 
-	/**
-	 * @var string
-	 */
-	protected $entityClass;
+    /**
+     * @var string
+     */
+    protected $s3Folder;
 
-	/**
-	 * @var Registry
-	 */
-	protected $doctrine;
+    /**
+     * @var string
+     */
+    protected $entityClass;
 
-	/**
-	 * @var EntityManager
-	 */
-	protected $entityManager;
+    /**
+     * @var Registry
+     */
+    protected $doctrine;
+
+    /**
+     * @var EntityManager
+     */
+    protected $entityManager;
 
     /**
      * @var Swift_Transport
@@ -49,21 +54,27 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      */
     protected $retryInterval = 0;
 
-	/**
-	 * @param string    $s3Config
-	 * @param string    $entityClass
-	 * @param Registry  $doctrine
-	 */
+    /**
+     * @param string    $s3Config
+     * @param string    $entityClass
+     * @param Registry  $doctrine
+     */
 
     public function __construct($s3Config, $entityClass, Registry $doctrine)
     {
         $this->s3Bucket = $s3Config['bucket'];
         unset ($s3Config['bucket']);
+
+        if (isset($s3Config['folder'])) {
+            $this->s3Folder = $s3Config['folder'];
+            unset ($s3Config['folder']);
+        }
+
         $this->s3Client = new S3Client($s3Config);
         
         $this->doctrine = $doctrine;
         $this->entityClass = $entityClass;
-    	$this->entityManager = $this->doctrine->getManagerForClass($this->entityClass);
+        $this->entityManager = $this->doctrine->getManagerForClass($this->entityClass);
     }
 
     /**
@@ -99,7 +110,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      */
     public function queueMessage(Swift_Mime_Message $message)
     {
-		$object = new $this->entityClass;
+        $object = new $this->entityClass;
 
         $from = $this->sanitizeAddresses(array_keys($message->getFrom()))[0];
         $recipient = $this->sanitizeAddresses(array_keys($message->getTo()));
@@ -260,7 +271,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         try {
             $result = $this->s3Client->putObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $key,
+                'Key'    => $this->s3Folder.'/'.$key,
                 'Body'   => serialize($message),
                 'ACL'    => 'private'
             ]);
@@ -286,7 +297,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         try {
             $result = $this->s3Client->getObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $key
+                'Key'    => $this->s3Folder.'/'.$key
             ]);
 
             return unserialize($result['Body']);
@@ -312,13 +323,13 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         try {
             $this->s3Client->copyObject([
                 'Bucket'     => $this->s3Bucket,
-                'Key'        => $targetKey,
+                'Key'        => $this->s3Folder.'/'.$targetKey,
                 'CopySource' => $this->s3Bucket.'/'.$sourceKey,
             ]);
 
             $this->s3Client->deleteObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $sourceKey
+                'Key'    => $this->s3Folder.'/'.$sourceKey
             ]);
         } catch (Exception $e) {
             throw new Swift_IoException(sprintf('Unable to arquive message "%s" in S3 Bucket "%s".', 
@@ -335,13 +346,13 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      */
     protected function sanitizeAddresses($addresses)
     {
-    	// returns resulting array, excluding invalid addresses
-    	return array_filter(array_map(
-			function($email) {
-				// sanitizes emails and excludes the invalid ones
-				return filter_var(filter_var(trim($email), FILTER_SANITIZE_EMAIL), FILTER_VALIDATE_EMAIL) ?: false;
-			},
-			(array) $addresses
-		));
+        // returns resulting array, excluding invalid addresses
+        return array_filter(array_map(
+            function($email) {
+                // sanitizes emails and excludes the invalid ones
+                return filter_var(filter_var(trim($email), FILTER_SANITIZE_EMAIL), FILTER_VALIDATE_EMAIL) ?: false;
+            },
+            (array) $addresses
+        ));
     }
 }
