@@ -321,10 +321,16 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         $targetKey = 'sent/'.date('Y/m/d').'/'.$messageId.'.msg';
 
         try {
+            $copySource = $this->s3Bucket.'/';
+            if ($this->s3Folder) {
+                $copySource .= $this->s3Folder.'/';
+            }
+            $copySource .= $sourceKey;
+
             $this->s3Client->copyObject([
                 'Bucket'     => $this->s3Bucket,
                 'Key'        => $this->s3Folder.'/'.$targetKey,
-                'CopySource' => $this->s3Bucket.'/'.$sourceKey,
+                'CopySource' => $copySource,
             ]);
 
             $this->s3Client->deleteObject([
