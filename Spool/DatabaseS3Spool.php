@@ -33,6 +33,11 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     protected $entityClass;
 
     /**
+     * @var string
+     */
+    protected $queue;
+
+    /**
      * @var Registry
      */
     protected $doctrine;
@@ -60,7 +65,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      * @param Registry  $doctrine
      */
 
-    public function __construct($s3Config, $entityClass, Registry $doctrine)
+    public function __construct($s3Config, $entityClass, Registry $doctrine, String $queue = 'default')
     {
         $this->s3Bucket = $s3Config['bucket'];
         unset ($s3Config['bucket']);
@@ -75,6 +80,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         $this->doctrine = $doctrine;
         $this->entityClass = $entityClass;
         $this->entityManager = $this->doctrine->getManagerForClass($this->entityClass);
+        $this->queue = $queue;
     }
 
     /**
@@ -128,6 +134,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         }
 
         $object->setQueuedAt(new \DateTime());
+        $object->setQueue($this->queue);
         
         $this->entityManager->persist($object);
         $this->entityManager->flush();
@@ -231,7 +238,9 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     {
         $qb = $this->entityManager->getRepository($this->entityClass)
             ->createQueryBuilder('m')
-            ->addOrderBy('m.queuedAt', 'ASC');
+            ->where('m.queue = :queue')
+            ->addOrderBy('m.queuedAt', 'ASC')
+            ->setParameter('queue', $this->queue);
 
         if ($this->getMessageLimit()) {
             $qb->setMaxResults($this->getMessageLimit());

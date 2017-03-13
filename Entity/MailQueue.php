@@ -30,6 +30,13 @@ class MailQueue
     /**
      * @var string
      *
+     * @ORM\Column(name="queue", type="string", length=255)
+     */
+    private $queue;
+
+    /**
+     * @var string
+     *
      * @ORM\Column(name="sender", type="text")
      */
     private $sender;
@@ -130,6 +137,30 @@ class MailQueue
     public function getSender()
     {
         return $this->sender;
+    }
+
+    /**
+     * Set queue
+     *
+     * @param string $queue
+     *
+     * @return MailQueue
+     */
+    public function setQueue($queue)
+    {
+        $this->queue = $queue;
+
+        return $this;
+    }
+
+    /**
+     * Get queue
+     *
+     * @return string
+     */
+    public function getQueue()
+    {
+        return $this->queue;
     }
 
     /**
