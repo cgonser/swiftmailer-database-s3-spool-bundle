@@ -248,14 +248,14 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
 
         switch ($status) {
             case 'unsent':
-                $qb->where('m.sentAt IS NULL')
+                $qb->andWhere('m.sentAt IS NULL')
                     ->andWhere('( m.sendAt IS NULL OR m.sendAt <= :now )')
                     ->andWhere('m.startedAt IS NULL')
                     ->setParameter('now', new \DateTime);
                 break;
             case 'retries':
                 $errorThreshold = new \DateTime($this->retryInterval.' minutes ago');
-                $qb->where('m.sentAt IS NULL')
+                $qb->andWhere('m.sentAt IS NULL')
                     ->andWhere('m.startedAt IS NOT NULL')
                     ->andWhere('m.startedAt <= :errorThreshold')
                     ->setParameter('errorThreshold', $errorThreshold);
