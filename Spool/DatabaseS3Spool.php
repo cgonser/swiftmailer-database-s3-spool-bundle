@@ -284,7 +284,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 'Body'   => serialize($message),
                 'ACL'    => 'private'
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new Swift_IoException(sprintf('Unable to store message "%s" in S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));
         }
@@ -313,7 +313,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
         } catch (\Aws\S3\Exception\S3Exception $e) {
             throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));            
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));
         }
@@ -346,7 +346,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 'Bucket' => $this->s3Bucket,
                 'Key'    => $this->s3Folder.'/'.$sourceKey
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new Swift_IoException(sprintf('Unable to arquive message "%s" in S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));
         }
