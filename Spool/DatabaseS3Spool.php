@@ -214,6 +214,9 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             $message = $this->s3RetrieveMessage($mailQueueObject->getId());
 
             $count = $this->transport->send($message, $this->failedRecipients);
+            if($count == 0){
+                throw new Swift_IoException('No messages were accepted for delivery.');
+            }
             $mailQueueObject->setSentAt(new \DateTime());
 
             $this->entityManager->persist($mailQueueObject);
