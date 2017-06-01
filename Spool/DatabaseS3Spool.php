@@ -53,13 +53,6 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     protected $transport;
 
     /**
-     * Interval between each retry
-     *
-     * @var integer
-     */
-    protected $retryInterval = 0;
-
-    /**
      * @param string    $s3Config
      * @param string    $entityClass
      * @param Registry  $doctrine
@@ -214,6 +207,9 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             $message = $this->s3RetrieveMessage($mailQueueObject->getId());
 
             $count = $this->transport->send($message, $this->failedRecipients);
+            if($count == 0){
+                throw new Swift_IoException('No messages were accepted for delivery.');
+            }
             $mailQueueObject->setSentAt(new \DateTime());
 
             $this->entityManager->persist($mailQueueObject);
@@ -236,31 +232,55 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
      */
     protected function fetchMessages($status = 'unsent')
     {
-        $qb = $this->entityManager->getRepository($this->entityClass)
-            ->createQueryBuilder('m')
-            ->where('m.queue = :queue')
-            ->addOrderBy('m.queuedAt', 'ASC')
-            ->setParameter('queue', $this->queue);
-
-        if ($this->getMessageLimit()) {
-            $qb->setMaxResults($this->getMessageLimit());
-        }
 
         switch ($status) {
             case 'unsent':
-                $qb->andWhere('m.sentAt IS NULL')
-                    ->andWhere('( m.sendAt IS NULL OR m.sendAt <= :now )')
-                    ->andWhere('m.startedAt IS NULL')
-                    ->setParameter('now', new \DateTime);
+                $sql = "UPDATE cgonser_mail_queue
+                        SET lock = NOW()
+                        WHERE id IN (
+                            SELECT id FROM cgonser_mail_queue
+                            WHERE queue = :queue
+                            AND sent_at IS NULL
+                            AND (sent_at IS NULL OR sent_at <= NOW())
+                            AND started_at IS NULL
+                            AND (lock IS NULL OR lock < NOW() - INTERVAL '30 MINUTES')
+                            ORDER BY queued_at ASC
+                            LIMIT :limit
+                        ) RETURNING id;";
+
+                $stmt = $this->entityManager->getConnection()->prepare($sql);
+                $stmt->execute([
+                    ':queue' => $this->queue,
+                    ':limit' => empty($this->getMessageLimit()) ? 1000 : $this->getMessageLimit(),
+                ]);
                 break;
             case 'retries':
-                $errorThreshold = new \DateTime($this->retryInterval.' minutes ago');
-                $qb->andWhere('m.sentAt IS NULL')
-                    ->andWhere('m.startedAt IS NOT NULL')
-                    ->andWhere('m.startedAt <= :errorThreshold')
-                    ->setParameter('errorThreshold', $errorThreshold);
+                $sql = "UPDATE cgonser_mail_queue
+                        SET lock = NOW()
+                        WHERE id IN (
+                            SELECT id FROM cgonser_mail_queue
+                            WHERE queue = :queue
+                            AND sent_at IS NULL
+                            AND started_at IS NOT NULL
+                            AND (lock IS NULL OR lock < NOW() - INTERVAL '30 MINUTES')
+                            ORDER BY queued_at ASC
+                            LIMIT :limit
+                        ) RETURNING id;";
+
+                $stmt = $this->entityManager->getConnection()->prepare($sql);
+                $stmt->execute([
+                    ':queue' => $this->queue,
+                    ':limit' => empty($this->getMessageLimit()) ? 1000 : $this->getMessageLimit()
+                ]);
                 break;
         }
+
+        $result = $stmt->fetchAll();
+
+        $qb = $this->entityManager->getRepository($this->entityClass)
+            ->createQueryBuilder('m');
+        $qb->andWhere($qb->expr()->in('m.id', ':ids'))
+            ->setParameter(':ids', array_column($result, 'id'));
 
         return $qb->getQuery()->getResult();
     }
@@ -284,8 +304,8 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 'Body'   => serialize($message),
                 'ACL'    => 'private'
             ]);
-        } catch (Exception $e) {
-            throw new Swift_IoException(sprintf('Unable to store message "%s" in S3 Bucket "%s".', 
+        } catch (\Exception $e) {
+            throw new Swift_IoException(sprintf('Unable to store message "%s" in S3 Bucket "%s".',
                 $messageId, $this->s3Bucket));
         }
 
@@ -311,10 +331,10 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
 
             return unserialize($result['Body']);
         } catch (\Aws\S3\Exception\S3Exception $e) {
-            throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
-                $messageId, $this->s3Bucket));            
-        } catch (Exception $e) {
-            throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".', 
+            throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".',
+                $messageId, $this->s3Bucket));
+        } catch (\Exception $e) {
+            throw new Swift_IoException(sprintf('Unable to retrieve message "%s" from S3 Bucket "%s".',
                 $messageId, $this->s3Bucket));
         }
     }
@@ -346,7 +366,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 'Bucket' => $this->s3Bucket,
                 'Key'    => $this->s3Folder.'/'.$sourceKey
             ]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new Swift_IoException(sprintf('Unable to arquive message "%s" in S3 Bucket "%s".', 
                 $messageId, $this->s3Bucket));
         }
