@@ -219,6 +219,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             $mailQueueObject->setSentAt(new \DateTime());
 
             $this->entityManager->persist($mailQueueObject);
+            $this->entityManager->flush();
             $this->s3ArquiveMessage($mailQueueObject->getId());
         } catch (\Exception $e) {
             $mailQueueObject->setErrorMessage($e->getMessage());
