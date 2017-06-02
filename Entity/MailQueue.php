@@ -104,6 +104,13 @@ class MailQueue
      */
     private $sentAt;
 
+    /**
+     * @var int
+     *
+     * @ORM\Column(name="max_retries", type="integer", nullable=true)
+     */
+    private $maxRetries = 0;
+
 
     /**
      * Get id
@@ -378,4 +385,25 @@ class MailQueue
     {
         return $this->queuedAt;
     }
+
+    /**
+     * @return int
+     */
+    public function getMaxRetries()
+    {
+        return $this->maxRetries;
+    }
+
+    /**
+     * @param int $maxRetries
+     * @return MailQueue
+     */
+    public function setMaxRetries(int $maxRetries)
+    {
+        $this->maxRetries = $maxRetries;
+
+        return $this;
+    }
+
+
 }

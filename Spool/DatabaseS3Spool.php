@@ -53,6 +53,12 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     protected $transport;
 
     /**
+     * Max retries
+     * @var int
+     */
+    private $maxRetries = 3;
+
+    /**
      * @param string    $s3Config
      * @param string    $entityClass
      * @param Registry  $doctrine
@@ -214,7 +220,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
 
             $this->entityManager->persist($mailQueueObject);
             $this->s3ArquiveMessage($mailQueueObject->getId());
-        } catch (Swift_IoException $e) {
+        } catch (\Exception $e) {
             $mailQueueObject->setErrorMessage($e->getMessage());
             $this->entityManager->persist($mailQueueObject);
             $count = 0;
@@ -256,13 +262,15 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 break;
             case 'retries':
                 $sql = "UPDATE cgonser_mail_queue
-                        SET lock = NOW()
+                        SET lock = NOW(),
+                        max_retries = max_retries + 1
                         WHERE id IN (
                             SELECT id FROM cgonser_mail_queue
                             WHERE queue = :queue
                             AND sent_at IS NULL
                             AND started_at IS NOT NULL
                             AND (lock IS NULL OR lock < NOW() - INTERVAL '30 MINUTES')
+                            AND max_retries < :max_retries
                             ORDER BY queued_at ASC
                             LIMIT :limit
                         ) RETURNING id;";
@@ -270,7 +278,8 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                 $stmt = $this->entityManager->getConnection()->prepare($sql);
                 $stmt->execute([
                     ':queue' => $this->queue,
-                    ':limit' => empty($this->getMessageLimit()) ? 1000 : $this->getMessageLimit()
+                    ':limit' => empty($this->getMessageLimit()) ? 1000 : $this->getMessageLimit(),
+                    ':max_retries' => $this->maxRetries
                 ]);
                 break;
         }
