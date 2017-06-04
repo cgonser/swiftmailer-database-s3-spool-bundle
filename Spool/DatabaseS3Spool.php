@@ -75,7 +75,11 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             unset ($s3Config['folder']);
         }
 
-        $this->s3Client = new S3Client($s3Config);
+        if (isset($s3Config['client'])) {
+            $this->s3Client = $s3Config['client'];
+        } else {
+            $this->s3Client = new S3Client($s3Config);
+        }
         
         $this->doctrine = $doctrine;
         $this->entityClass = $entityClass;
@@ -279,16 +283,17 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     protected function s3StoreMessage($messageId, $message)
     {
         $key = $messageId.'.msg';
+        $key = trim($this->s3Folder.'/'.$key, '/');
 
         try {
             $result = $this->s3Client->putObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $this->s3Folder.'/'.$key,
+                'Key'    => $key,
                 'Body'   => serialize($message),
                 'ACL'    => 'private'
             ]);
         } catch (\Exception $e) {
-            throw new Swift_IoException(sprintf('Unable to store message "%s" in S3 Bucket "%s".', 
+            throw new Swift_IoException(sprintf('Unable to store message "%s" in S3 Bucket "%s".'.$e->getMessage(), 
                 $messageId, $this->s3Bucket));
         }
 
@@ -305,11 +310,12 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
     protected function s3RetrieveMessage($messageId)
     {
         $key = $messageId.'.msg';
+        $key = trim($this->s3Folder.'/'.$key, '/');
 
         try {
             $result = $this->s3Client->getObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $this->s3Folder.'/'.$key
+                'Key'    => $key
             ]);
 
             return unserialize($result['Body']);
@@ -339,15 +345,18 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
             }
             $copySource .= $sourceKey;
 
+            $sourceKey = trim($this->s3Folder.'/'.$sourceKey, '/');
+            $targetKey = trim($this->s3Folder.'/'.$targetKey, '/');
+
             $this->s3Client->copyObject([
                 'Bucket'     => $this->s3Bucket,
-                'Key'        => $this->s3Folder.'/'.$targetKey,
+                'Key'        => $targetKey,
                 'CopySource' => $copySource,
             ]);
 
             $this->s3Client->deleteObject([
                 'Bucket' => $this->s3Bucket,
-                'Key'    => $this->s3Folder.'/'.$sourceKey
+                'Key'    => $sourceKey
             ]);
         } catch (\Exception $e) {
             throw new Swift_IoException(sprintf('Unable to arquive message "%s" in S3 Bucket "%s".', 
