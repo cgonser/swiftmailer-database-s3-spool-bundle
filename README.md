@@ -48,6 +48,16 @@ cgonser_swift_mailer_database_s3_spool:
         folder: "<TARGET FOLDER>" (optional)
 ```
 
+You can optionally include specific credentials configurations for the s3 client, as follows:
+
+```yaml
+cgonser_swift_mailer_database_s3_spool:
+    s3:
+        credentials:
+            key: "<AWS_ACCESS_KEY_ID>"
+            secret: "<AWS_SECRET_ACCESS_KEY>"
+```
+
 Still in `app/config/config.yml`, enable the services and change the swift mailer spool configuration:
 
 ```yaml
