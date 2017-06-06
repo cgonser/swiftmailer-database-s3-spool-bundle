@@ -253,6 +253,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                             AND (lock IS NULL OR lock < NOW() - INTERVAL '30 MINUTES')
                             ORDER BY queued_at ASC
                             LIMIT :limit
+                            FOR UPDATE SKIP LOCKED
                         ) RETURNING id;";
 
                 $stmt = $this->entityManager->getConnection()->prepare($sql);
@@ -274,6 +275,7 @@ class DatabaseS3Spool extends Swift_ConfigurableSpool
                             AND max_retries < :max_retries
                             ORDER BY queued_at ASC
                             LIMIT :limit
+                            FOR UPDATE SKIP LOCKED
                         ) RETURNING id;";
 
                 $stmt = $this->entityManager->getConnection()->prepare($sql);
